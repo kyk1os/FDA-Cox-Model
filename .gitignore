@@ -1,0 +1,44 @@
+# R generated files
+*.html
+*_cache/
+*_files/
+.Rhistory
+.RData
+.RDataTmp
+.Rproj.user
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+_vendor*/
+
+# LaTeX temporary files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
+# Generated PDFs (except specific ones)
+FDA.pdf
+FDA2.pdf
+draft.pdf
+Paper.pdf
+
+# Keep output folder for Overleaf
+!output/
+
+# Keep specific paper draft
+!Functional_Cox_Regression_for_Time_to_Event_Prediction.pdf
+
+# Large data files
+fda_data.csv
+
+# Reference PDFs (too large)
+Functional Data Analysis with R.pdf
+
+# OS files
+.DS_Store
+Thumbs.db
+
