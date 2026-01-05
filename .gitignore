@@ -32,9 +32,6 @@ Paper.pdf
 # Keep specific paper draft
 !Functional_Cox_Regression_for_Time_to_Event_Prediction.pdf
 
-# Large data files
-fda_data.csv
-
 # Reference PDFs (too large)
 Functional Data Analysis with R.pdf
 
