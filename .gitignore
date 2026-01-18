@@ -7,6 +7,17 @@
 .RDataTmp
 .Rproj.user
 
+# Files excluded from GitHub (kept locally only)
+Comments.pdf
+FDA.Rmd
+FDA2codes.txt
+Paper_commented.pdf
+PeaksNPrimes.pdf
+data-acquisition.qmd
+olympic_results.csv
+paper_draft.tex
+output/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -25,9 +36,6 @@ FDA.pdf
 FDA2.pdf
 draft.pdf
 Paper.pdf
-
-# Keep output folder for Overleaf
-!output/
 
 # Keep specific paper draft
 !Functional_Cox_Regression_for_Time_to_Event_Prediction.pdf
