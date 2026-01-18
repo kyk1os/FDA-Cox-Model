@@ -249,7 +249,8 @@ raw <- readr::read_csv(
     result_score = col_double(),
     mark = col_character(),
     athlete_id = col_character(),
-    athlete_link = col_character()
+    athlete_link = col_character(),
+    race = col_character()  # Add race column for unique identification
   ),
   show_col_types = FALSE
 ) %>% 
@@ -264,6 +265,7 @@ raw <- readr::read_csv(
 # Basic data summary
 cat("\n=== RAW DATA SUMMARY (NEW DATASET) ===\n")
 cat("Total observations:", nrow(raw), "\n")
+cat("Note: Each row represents a result from a competition (athlete_id, event, race, date)\n")
 cat("Date range:", min(raw$year, na.rm = TRUE), "-", max(raw$year, na.rm = TRUE), "\n")
 cat("Unique athletes:", n_distinct(raw$athlete_id), "\n")
 cat("Unique events:", n_distinct(raw$event), "\n")
@@ -275,11 +277,13 @@ print(colSums(is.na(raw)))
 cat("\n=== DATA QUALITY CHECKS ===\n")
 
 # Check for duplicate records
+# A row is uniquely identified by (date, event, athlete_id, race)
 duplicates <- raw %>% 
-  group_by(athlete_id, year, event, performance) %>% 
+  group_by(date, event, athlete_id, race) %>% 
   filter(n() > 1) %>% 
   nrow()
-cat("Duplicate records:", duplicates, "\n")
+cat("Duplicate records (by date, event, athlete_id, race):", duplicates, "\n")
+cat("  Note: This should be ~10k, not 170k (per PhD mentor verification)\n")
 
 # Check year distribution
 cat("\nYear distribution (first 10 years):\n")
@@ -315,10 +319,113 @@ df <- raw %>%
   )
 ```
 
+## Filter for Official Olympic Events
+
+```{r filter-olympic-events}
+# ============================================================
+# FILTER: Keep only official Olympic individual events
+# Per PhD mentor: "refer to the peaks and primes code to see
+# the list of official Olympic events. There should only be like 42."
+# Reference: peaks-and-primes.Rmd line 104-113
+# ============================================================
+# Note: PhD's list has 26 unique event names, but ~42-47 when
+# counting Men's and Women's versions separately (gender-specific).
+# We filter by event names (not gender-specific in our data structure).
+# ============================================================
+
+cat("\n=== FILTERING FOR OFFICIAL OLYMPIC EVENTS ===\n")
+cat("Total observations before filter:", nrow(df), "\n")
+
+# Official Olympic individual track & field events
+# From peaks-and-primes.Rmd (PhD's official reference code)
+olympic_events <- c(
+  # Sprints (6 events)
+  "100 Metres", "200 Metres", "400 Metres",
+  "100 Metres Hurdles",  # Women
+  "110 Metres Hurdles",  # Men  
+  "400 Metres Hurdles",
+  
+  # Middle Distance (3 events)
+  "800 Metres", "1500 Metres", "3000 Metres Steeplechase",
+  
+  # Long Distance (2 events)
+  "5000 Metres", "10,000 Metres",
+  
+  # Combined Events (2 events)
+  "Heptathlon",   # Women
+  "Decathlon",    # Men
+  
+  # Jumps (4 events)
+  "High Jump", "Long Jump", "Triple Jump", "Pole Vault",
+  
+  # Throws (5 events)
+  "Shot Put", "Discus Throw", "Hammer Throw", "Javelin Throw",
+  "Javelin Throw (old)",  # Historical
+  
+  # Road Races (4 events)
+  "10 Kilometres Race Walk", 
+  "20 Kilometres Race Walk",
+  "50 Kilometres Race Walk",  # Men only (historical)
+  "Marathon"
+)
+
+cat("Official Olympic events (from PhD's peaks-and-primes.Rmd):", length(olympic_events), "\n")
+
+# Apply filter
+df_before_filter <- df
+df <- df %>% filter(event_clean %in% olympic_events)
+
+cat("\nFilter results:\n")
+cat("  Original:", nrow(df_before_filter), "observations\n")
+cat("  Retained:", nrow(df), "observations (", 
+    round(100 * nrow(df) / nrow(df_before_filter), 1), "%)\n")
+cat("  Excluded:", nrow(df_before_filter) - nrow(df), "observations (", 
+    round(100 * (nrow(df_before_filter) - nrow(df)) / nrow(df_before_filter), 1), "%)\n")
+
+# Verify exclusions (relays and wheelchairs should be automatically excluded)
+relays_remaining <- df %>% 
+  filter(str_detect(tolower(event_clean), "relay")) %>% 
+  nrow()
+wheelchair_remaining <- df %>% 
+  filter(str_detect(tolower(event_clean), "wheelchair")) %>% 
+  nrow()
+
+cat("\nVerification:\n")
+cat("  Relay events:", relays_remaining, 
+    ifelse(relays_remaining == 0, "✓ (not in official list)\n", "✗ ERROR!\n"))
+cat("  Wheelchair events:", wheelchair_remaining, 
+    ifelse(wheelchair_remaining == 0, "✓ (not in official list)\n", "✗ ERROR!\n"))
+
+# Show retained events
+cat("\nOlympic events present in dataset:\n")
+events_in_data <- df %>% 
+  distinct(event_clean) %>% 
+  arrange(event_clean) %>%
+  pull(event_clean)
+
+cat("  Total:", length(events_in_data), "of", length(olympic_events), "possible\n")
+for(ev in events_in_data) {
+  cat("    •", ev, "\n")
+}
+
+# Check if any official events are missing from data
+missing_events <- setdiff(olympic_events, events_in_data)
+if(length(missing_events) > 0) {
+  cat("\n  Events in official list but NOT in dataset:\n")
+  for(ev in missing_events) {
+    cat("    ○", ev, "\n")
+  }
+}
+```
+
 ## Categorize Events into Families
 
 ```{r event-families}
 # Function to categorize events into broad families
+# NOTE: Per PhD mentor feedback:
+#   - Separate jumps from throws (different biomechanics/training)
+#   - Combine hurdles with sprints (both are speed-based, short distance)
+#   - Relays excluded (already filtered out - focus on individual events only)
 to_event_family <- function(ev) {
   ev <- tolower(ev)
   # Remove commas before extracting distance (e.g., "10,000" -> "10000")
@@ -328,17 +435,23 @@ to_event_family <- function(ev) {
     # Combined events
     str_detect(ev, "decathlon|heptathlon|pentathlon") ~ "Combined",
     
-    # Field events
-    str_detect(ev, "jump|vault|throw|shot|discus|javelin|hammer") ~ "Field",
+    # Field events - SEPARATE jumps from throws (per PhD mentor)
+    # Jumps: vertical/horizontal jumps and vaults
+    str_detect(ev, "jump|vault") ~ "Jumps",
+    
+    # Throws: shot put, discus, javelin, hammer, weight
+    str_detect(ev, "throw|shot|discus|javelin|hammer") ~ "Throws",
     
     # Road/walking
     str_detect(ev, "walk|marathon|road") ~ "Road",
     
-    # Separate steeplechase BEFORE hurdles check
+    # Separate steeplechase BEFORE distance check
     str_detect(ev, "steeple") ~ "Long", 
     
-    # Hurdles (pure technical + speed events)
-    str_detect(ev, "hurdle") ~ "Hurdles",
+    # Hurdles - MERGE with Sprint (per PhD mentor)
+    # Rationale: Both are speed-based, short-distance events
+    # Even though hurdles require technical skill, they're fundamentally sprints
+    str_detect(ev, "hurdle") ~ "Sprint",
     
     # Distance events by meters (after steeplechase check)
     str_detect(ev, "mile") ~ "Middle",
@@ -346,9 +459,8 @@ to_event_family <- function(ev) {
     str_detect(ev, "metre|meter") & !is.na(d) & d >= 800 ~ "Middle",
     str_detect(ev, "metre|meter") & !is.na(d) & d <= 400 ~ "Sprint",
     
-    # Relays - classify by distance
-    str_detect(ev, "relay") & str_detect(ev, "4x[18]00|4x15") ~ "Middle",
-    str_detect(ev, "relay") ~ "Sprint",
+    # NOTE: Relay logic removed - relays filtered out in previous step
+    # Keeping only individual Olympic events per PhD mentor
     
     TRUE ~ "Unknown"
   )
@@ -356,29 +468,25 @@ to_event_family <- function(ev) {
 
 df <- df %>% mutate(event_family = to_event_family(event_clean))
 
-# EXCLUDE Unknown events (cross country, non-standard events)
-cat("\n=== EXCLUDING UNKNOWN EVENTS ===\n")
-unknown_count <- sum(df$event_family == "Unknown")
-cat("Dropping", unknown_count, "observations classified as Unknown\n")
-cat("Percent excluded:", round(unknown_count/nrow(df)*100, 2), "%\n")
-
-df <- df %>% filter(event_family != "Unknown")
-
 # Summary of event families
-cat("\n=== EVENT FAMILY DISTRIBUTION (After Exclusion) ===\n")
+cat("\n=== EVENT FAMILY DISTRIBUTION ===\n")
 family_summary <- df %>% 
   count(event_family, sort = TRUE) %>%
   mutate(percent = round(n / sum(n) * 100, 1))
 print(family_summary)
 
-# Check for unknown events
-unknown_events <- df %>% 
-  filter(event_family == "Unknown") %>% 
-  distinct(event_clean)
-if (nrow(unknown_events) > 0) {
-  cat("\nUnknown events found:\n")
+# Verify no Unknown events (should be 0 since we only kept Olympian events)
+unknown_count <- sum(df$event_family == "Unknown", na.rm = TRUE)
+if (unknown_count > 0) {
+  cat("\nWARNING:", unknown_count, "observations with Unknown event_family\n")
+  cat("This shouldn't happen - check event classification logic!\n")
+  unknown_events <- df %>% 
+    filter(event_family == "Unknown") %>%
+    distinct(event_clean)
   print(unknown_events)
 }
+
+cat("\nTotal Olympian-Individual-Event observations classified:", sum(family_summary$n), "\n")
 ```
 
 ## Parse and Unify Performance Metrics
