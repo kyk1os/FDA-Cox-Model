@@ -1,83 +1,44 @@
 # Functional Cox Regression for Time-to-Event Prediction
 
-**Undergraduate Research Project**  
-*Supervised by Dr. Samuel Wong*  
-*Predicting peak performance timing in elite athletes using functional survival analysis*
+This project develops functional survival analysis methods to predict peak performance timing in elite athletes. By treating longitudinal performance trajectories as smooth functions rather than discrete observations, we extend Cox proportional hazards models to incorporate phase-specific effects from entire career curves.
 
----
+## Repository Contents
 
-## 📂 Repository Contents
+**FDA2.qmd**  
+Core source code including data processing, functional data analysis, and all survival models (scalar Cox, random survival forest, functional linear Cox model, additive functional Cox model). Contains complete reproducible analysis pipeline.
 
-### 🔬 Core Analysis File
-- **`FDA2.qmd`**  
-  Complete source code including data processing, functional data analysis, and all survival models (Cox, RSF, FLCM, AFCM). Contains ~4,000 lines of reproducible R code with full documentation.
+**Functional_Cox_Regression_for_Time_to_Event_Prediction.pdf**  
+First-author manuscript (version 3, under revision). Presents methodology and results from analyzing 67,977 athlete careers across 7 Olympic track-and-field event families.
 
-### 📄 Manuscript
-- **`Functional_Cox_Regression_for_Time_to_Event_Prediction.pdf`**  
-  First-author manuscript (v3, under revision). Presents methodology, results, and phase-specific functional insights from analyzing 67,977 athlete careers.
+**FDAOutline.pdf**  
+Research design plan outlining the methodological framework and analytical approach.
 
-### 📋 Research Design
-- **`FDAOutline.pdf`**  
-  Research design plan and methodological framework outlining the project structure and analytical approach.
+**fda_data.csv**  
+Complete dataset: 347,625 annual season-best observations from Olympic-level athletes (1996-2024). File stored via Git LFS (316 MB).
 
-### 📊 Data
-- **`fda_data.csv`**  
-  Complete dataset: 347,625 annual season-best observations from Olympic-level track-and-field athletes (1996-2024). Stored via Git LFS (316 MB).
+## Research Workflow
 
----
+1. **Data Collection**: Compiled longitudinal performance records from World Athletics database covering 28 years of Olympic track-and-field competitions.
 
-## 🎯 Project Summary
+2. **Functional Representation**: Converted discrete yearly observations into smooth functional curves using B-spline basis expansion with integrated roughness penalties.
 
-**Research Question:** Can we predict when elite athletes will reach peak performance by analyzing their career progression curves?
+3. **Survival Modeling**: Fit four competing models to predict time-to-peak-performance:
+   - Scalar Cox (baseline demographics only)
+   - Random Survival Forest (scalar covariates)
+   - Functional Linear Cox Model (FLCM with trajectory integrals)
+   - Additive Functional Cox Model (AFCM with phase-specific effects)
 
-**Methodology:**
-- Functional Data Analysis (FDA) treats performance trajectories as smooth functions
-- Cox proportional hazards models extended with functional covariates
-- Comparison: Scalar Cox vs. Random Survival Forest vs. Functional Linear Cox Model (FLCM) vs. Additive Functional Cox Model (AFCM)
+4. **Model Evaluation**: Assessed discrimination (C-index) and calibrated time prediction accuracy (RMSE, MAE) on held-out test set.
 
-**Key Findings:**
-- Functional models (FLCM/AFCM) achieve best discrimination (C-index) and lowest prediction errors
-- Phase-specific coefficient functions reveal which career stages are most predictive
-- Early-career performance typically predicts earlier peaks; sustained late-career performance predicts later peaks
+5. **Interpretation**: Extracted phase-specific coefficient functions to identify which career stages most strongly predict timing of peak performance.
 
-**Applications:** Beyond sports analytics, this framework applies to medical biomarkers, equipment reliability, user engagement analytics, and any domain with longitudinal monitoring.
+## Key Findings
 
----
+Functional models (FLCM and AFCM) achieve superior predictive performance compared to scalar methods. The additive functional approach reveals that early-career performance patterns typically predict earlier peaks, while sustained late-career improvement predicts later peaks. These phase-specific insights are impossible to capture with traditional scalar covariates.
 
-## 🔧 Technical Details
+## Technical Details
 
-- **Language:** R (≥4.0)
-- **Key Packages:** `survival`, `mgcv`, `refund`, `randomForestSRC`, `splines`
-- **Data Size:** 67,977 athlete-event careers | 347,625 yearly observations
-- **Models:** 4 survival models across 7 event families
-- **Evaluation:** 80/20 train-test split with C-index, RMSE, MAE metrics
-
----
-
-## 📈 Impact
-
-This research demonstrates that functional Cox regression provides:
-1. ✅ **Better prediction** - Improved discrimination and calibrated time-to-event forecasts
-2. ✅ **Interpretable insights** - Phase-specific effects reveal when trajectory shape matters most
-3. ✅ **Broad applicability** - Framework generalizes to clinical, engineering, and behavioral domains
-
----
-
-## 📖 Citation
-
-```
-Functional Cox Regression for Time-to-Event Prediction: 
-Learning Phase-Specific Effects from Longitudinal Trajectories
-Kyle Ye (supervised by Dr. Samuel Wong)
-[Under Revision, 2025]
-```
-
----
-
-## 🔗 Keywords
-
-Functional Data Analysis · Survival Analysis · Cox Regression · Longitudinal Data · Sports Analytics · Time-to-Event Prediction · B-Spline Smoothing · Phase-Specific Effects
-
----
-
-*For questions or collaboration: GitHub @kyk1os*
+Language: R (≥4.0)  
+Key Packages: survival, mgcv, refund, randomForestSRC, splines  
+Data: 67,977 careers | 347,625 observations  
+Models: 4 survival models × 7 event families
